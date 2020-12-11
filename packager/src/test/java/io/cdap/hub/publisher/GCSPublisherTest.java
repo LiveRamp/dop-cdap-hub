@@ -23,21 +23,21 @@ import com.google.cloud.storage.contrib.nio.testing.LocalStorageHelper;
 import io.cdap.hub.GoogleCloudStorageClient;
 import io.cdap.hub.Hub;
 import io.cdap.hub.Packager;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
 import java.util.stream.StreamSupport;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 @ExtendWith(MockitoExtension.class)
 class GCSPublisherTest {
@@ -178,7 +178,8 @@ class GCSPublisherTest {
     );
 
     // 3. Reading the existing content of spec.json before making the change, in order to revert it at the end
-    byte[] existingFileContent = Files.readAllBytes(Paths.get("src/test/resources/packages/test-service/1.0.0/spec.json"));
+    byte[] existingFileContent = Files.readAllBytes(
+        Paths.get("src/test/resources/packages/test-service/1.0.0/spec.json"));
 
     // 4. Making the change to spec.json so it gets uploaded
     Files.write(

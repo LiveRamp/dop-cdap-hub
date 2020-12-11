@@ -96,20 +96,8 @@ public class GCSPublisher implements Publisher {
 
   private void publishPackage(Package pkg) throws Exception {
     LOG.info("Publishing package {}-{}", pkg.getName(), pkg.getVersion());
-    StringBuilder keyPrefixBuilder = new StringBuilder();
-    if (prefix != null && !prefix.equals("")) {
-      keyPrefixBuilder.append(prefix);
-      keyPrefixBuilder.append("/");
-    }
 
-    keyPrefixBuilder.append("packages");
-    keyPrefixBuilder.append("/");
-    keyPrefixBuilder.append(pkg.getName());
-    keyPrefixBuilder.append("/");
-    keyPrefixBuilder.append(pkg.getVersion());
-    keyPrefixBuilder.append("/");
-
-    String keyPrefix = keyPrefixBuilder.toString();
+    String keyPrefix = buildKeyPrefixForPackage(pkg);
 
     putFilesIfChanged(keyPrefix, pkg.getIcon());
     putFilesIfChanged(keyPrefix, pkg.getLicense());
@@ -130,7 +118,7 @@ public class GCSPublisher implements Publisher {
     for (Blob blob : blobs.iterateAll()) {
 
       String objectKey = blob.getName();
-      String name = objectKey.substring(keyPrefixBuilder.length());
+      String name = objectKey.substring(keyPrefix.length());
       if (!pkg.getFileNames().contains(name)) {
         if (!dryrun) {
           LOG.info("Deleting object {} from gcs bucket since it does not exist in the package anymore.", objectKey);
@@ -142,6 +130,23 @@ public class GCSPublisher implements Publisher {
         }
       }
     }
+  }
+
+  private String buildKeyPrefixForPackage(Package pkg) {
+    StringBuilder keyPrefixBuilder = new StringBuilder();
+    if (prefix != null && !prefix.equals("")) {
+      keyPrefixBuilder.append(prefix);
+      keyPrefixBuilder.append("/");
+    }
+
+    keyPrefixBuilder.append("packages");
+    keyPrefixBuilder.append("/");
+    keyPrefixBuilder.append(pkg.getName());
+    keyPrefixBuilder.append("/");
+    keyPrefixBuilder.append(pkg.getVersion());
+    keyPrefixBuilder.append("/");
+
+    return keyPrefixBuilder.toString();
   }
 
   private void publishCategory(CategoryMeta categoryMeta) throws Exception {

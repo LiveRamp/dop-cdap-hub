@@ -138,7 +138,8 @@ class GCSPublisherTest {
     );
 
     // 3. spec.json should not be uploaded again, as it already exists and hasn't changed since
-    boolean shouldPush = gcsPublisher.shouldPush("packages/test-service/1.0.0/",
+    boolean shouldPush = gcsPublisher.shouldPush(
+        Paths.get("packages/test-service/1.0.0"),
         new File("src/test/resources/packages/test-service/1.0.0/spec.json"));
     assertFalse(shouldPush);
   }
@@ -189,7 +190,8 @@ class GCSPublisherTest {
         StandardOpenOption.APPEND);
 
     // 5. spec.json should be uploaded again, as we changed it in step 4
-    boolean shouldPush = gcsPublisher.shouldPush("packages/test-service/1.0.0/",
+    boolean shouldPush = gcsPublisher.shouldPush(
+        Paths.get("packages/test-service/1.0.0"),
         new File("src/test/resources/packages/test-service/1.0.0/spec.json"));
     assertTrue(shouldPush);
 

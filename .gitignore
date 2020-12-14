@@ -1,10 +1,11 @@
 *.class
 .*.swp
 *.jar
-!packages/**/*.jar
 target/
+
 packages.json
 categories.json
+packages/
 
 # Intellij Files & Dir #
 *.iml

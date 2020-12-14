@@ -16,8 +16,6 @@
 
 package io.cdap.hub.publisher;
 
-import static java.util.Optional.ofNullable;
-
 import com.google.api.gax.paging.Page;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
@@ -32,15 +30,16 @@ import io.cdap.hub.Hub;
 import io.cdap.hub.Package;
 import io.cdap.hub.SignedFile;
 import io.cdap.hub.spec.CategoryMeta;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import javax.activation.FileTypeMap;
 import javax.activation.MimetypesFileTypeMap;
@@ -109,13 +108,12 @@ public class GCSPublisher implements Publisher {
     Page<Blob> blobs =
         storage.list(
             this.bucket,
-            Storage.BlobListOption.prefix(keyPrefix.toString()),
-            Storage.BlobListOption.currentDirectory());
+            Storage.BlobListOption.prefix(keyPrefix.toString()));
 
     for (Blob blob : blobs.iterateAll()) {
 
       String objectKey = blob.getName();
-      String name = keyPrefix.getFileName().toString();
+      String name = Paths.get(objectKey).getFileName().toString();
       if (!pkg.getFileNames().contains(name)) {
         if (!dryrun) {
           LOG.info("Deleting object {} from gcs bucket since it does not exist in the package anymore.", objectKey);
@@ -130,7 +128,9 @@ public class GCSPublisher implements Publisher {
   }
 
   private Path resolveKeyPrefixForPackage(Package pkg) {
-    return Paths.get(ofNullable(this.prefix).orElse(""), "packages", pkg.getName(), pkg.getVersion());
+    return Paths.get(
+        Optional.ofNullable(this.prefix).orElse(""),
+        "packages", pkg.getName(), pkg.getVersion());
   }
 
   private void publishCategory(CategoryMeta categoryMeta) throws Exception {

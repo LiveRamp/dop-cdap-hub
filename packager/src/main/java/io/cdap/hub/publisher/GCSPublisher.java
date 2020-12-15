@@ -22,7 +22,6 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.hash.Hashing;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.Files;
 import com.google.common.net.MediaType;
@@ -31,12 +30,16 @@ import io.cdap.hub.Hub;
 import io.cdap.hub.Package;
 import io.cdap.hub.SignedFile;
 import io.cdap.hub.spec.CategoryMeta;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import javax.activation.FileTypeMap;
 import javax.activation.MimetypesFileTypeMap;
@@ -80,15 +83,17 @@ public class GCSPublisher implements Publisher {
     for (CategoryMeta categoryMeta : hub.getCategories()) {
       publishCategory(categoryMeta);
     }
+
     LOG.info("Publishing package catalog");
-    putFilesIfChanged(prefix + "/", hub.getPackageCatalog());
+    putFilesIfChanged(Paths.get(prefix), hub.getPackageCatalog());
     LOG.info("Publishing category catalog");
-    putFilesIfChanged(prefix + "/", hub.getCategoryCatalog());
+    putFilesIfChanged(Paths.get(prefix), hub.getCategoryCatalog());
   }
 
   private void publishPackage(Package pkg) throws Exception {
     LOG.info("Publishing package {}-{}", pkg.getName(), pkg.getVersion());
-    String keyPrefix = String.format("%s/packages/%s/%s/", prefix, pkg.getName(), pkg.getVersion());
+
+    Path keyPrefix = resolveKeyPrefixForPackage(pkg);
 
     putFilesIfChanged(keyPrefix, pkg.getIcon());
     putFilesIfChanged(keyPrefix, pkg.getLicense());
@@ -103,13 +108,12 @@ public class GCSPublisher implements Publisher {
     Page<Blob> blobs =
         storage.list(
             this.bucket,
-            Storage.BlobListOption.prefix(keyPrefix),
-            Storage.BlobListOption.currentDirectory());
+            Storage.BlobListOption.prefix(keyPrefix.toString()));
 
     for (Blob blob : blobs.iterateAll()) {
 
       String objectKey = blob.getName();
-      String name = objectKey.substring(keyPrefix.length());
+      String name = Paths.get(objectKey).getFileName().toString();
       if (!pkg.getFileNames().contains(name)) {
         if (!dryrun) {
           LOG.info("Deleting object {} from gcs bucket since it does not exist in the package anymore.", objectKey);
@@ -123,13 +127,21 @@ public class GCSPublisher implements Publisher {
     }
   }
 
+  private Path resolveKeyPrefixForPackage(Package pkg) {
+    return Paths.get(
+        Optional.ofNullable(this.prefix).orElse(""),
+        "packages", pkg.getName(), pkg.getVersion());
+  }
+
   private void publishCategory(CategoryMeta categoryMeta) throws Exception {
-    String keyPrefix = String.format("%s/categories/%s/", prefix, categoryMeta.getName());
-    putFilesIfChanged(keyPrefix, categoryMeta.getIcon());
+    putFilesIfChanged(
+        Paths.get(this.prefix, "categories", categoryMeta.getName()),
+        categoryMeta.getIcon()
+    );
   }
 
   // if the specified file has changed, put it plus all extra files on gcs bucket.
-  private void putFilesIfChanged(String keyPrefix, @Nullable File file, File... extraFiles) throws IOException {
+  private void putFilesIfChanged(Path keyPrefix, @Nullable File file, File... extraFiles) throws IOException {
     if (file != null && shouldPush(keyPrefix, file)) {
       putFile(keyPrefix, file);
       for (File extraFile : extraFiles) {
@@ -141,24 +153,24 @@ public class GCSPublisher implements Publisher {
   }
 
   // check if the file in the gcs bucket has a different md5 or the file length.
-  private boolean shouldPush(String keyPrefix, File file) throws IOException {
+  boolean shouldPush(Path keyPrefix, File file) throws IOException {
     if (forcePush) {
       return true;
     }
-    String key = keyPrefix + file.getName();
+
+    Path key = resolveKeyForFile(keyPrefix, file);
 
     Page<Blob> blobs =
         storage.list(
             this.bucket,
-            Storage.BlobListOption.prefix(key),
+            Storage.BlobListOption.prefix(key.toString()),
             Storage.BlobListOption.currentDirectory());
-    if (blobs.hasNextPage()) {
-      Blob blob = blobs.getNextPage().getValues().iterator().next();
+    for (Blob blob : blobs.iterateAll()) {
       long existingContentFileLength = blob.getSize();
       long fileLength = file.length();
-      String md5Hex = BaseEncoding.base16().encode(Files.hash(file, Hashing.md5()).asBytes());
+      String md5Hex = BaseEncoding.base16().encode(DigestUtils.md5(Files.toByteArray(file)));
       if (existingContentFileLength == fileLength &&
-          blob.getEtag() != null && blob.getEtag().equalsIgnoreCase(md5Hex)) {
+          blob.getMd5() != null && blob.getMd5ToHexString().equalsIgnoreCase(md5Hex)) {
         LOG.info("{} has not changed, skipping upload to GCS bucket.", file);
         return false;
       }
@@ -166,7 +178,7 @@ public class GCSPublisher implements Publisher {
     return true;
   }
 
-  private void putFile(String keyPrefix, File file) throws IOException {
+  private void putFile(Path keyPrefix, File file) throws IOException {
     String ext = Files.getFileExtension(file.getName());
     String contentType;
     switch (ext) {
@@ -186,11 +198,11 @@ public class GCSPublisher implements Publisher {
         contentType = fileTypeMap.getContentType(file);
     }
 
-    String key = keyPrefix + file.getName();
+    Path key = resolveKeyForFile(keyPrefix, file);
 
     if (!dryrun) {
       LOG.info("put file {} into gcs bucket with key {}", file, key);
-      BlobId blobId = BlobId.of(bucket, key);
+      BlobId blobId = BlobId.of(bucket, key.toString());
       BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
           .setMetadata(ImmutableMap.of("Content-Type", contentType))
           .build();
@@ -199,6 +211,10 @@ public class GCSPublisher implements Publisher {
       LOG.info("dryrun - would have put file {} into gcs bucket with key {}", file, key);
     }
     updatedKeys.add("/" + key);
+  }
+
+  private Path resolveKeyForFile(Path keyPrefix, File file) {
+    return keyPrefix.resolve(file.getName());
   }
 
   public static Builder builder(GoogleCloudStorageClient googleCloudStorageClient, String projectId, String bucket) {

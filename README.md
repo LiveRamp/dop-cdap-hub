@@ -4,9 +4,9 @@
 
 The links below will open/download a json file that comprises of the artifacts and versions on the Hub (LR VPN required): 
 
-* Prod: https://storage.googleapis.com/liveramp-cdap-hub-prod/packages.json
-* Staging: https://storage.googleapis.com/liveramp-cdap-hub-stagin/packages.json
-* Dev: https://storage.googleapis.com/liveramp-cdap-hub-dev/packages.json
+* [Prod](https://storage.googleapis.com/liveramp-cdap-hub-prod/packages.json)
+* [Staging](https://storage.googleapis.com/liveramp-cdap-hub-stagin/packages.json)
+* [Dev](https://storage.googleapis.com/liveramp-cdap-hub-dev/packages.json)
 
 ## Context
 

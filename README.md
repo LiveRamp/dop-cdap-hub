@@ -8,6 +8,8 @@ The links below will open/download a json file that comprises of the artifacts a
 * Staging: https://storage.googleapis.com/liveramp-cdap-hub-stagin/packages.json
 * Dev: https://storage.googleapis.com/liveramp-cdap-hub-dev/packages.json
 
+## Context
+
 The Hub concept in CDAP allows users to create and update CDAP artifacts, applications, and datasets using simple wizards. Instead of building code, deploying artifacts, and configuring applications, users can simply point and click. This allows users of varying technical skill the ability to deploy and run common use-cases in a self-service manner.
 
 The Hub allows system administrators to distribute re-usable applications, data, and code to all CDAP users in their organization. Though there is currently no method for publishing packages to the public CDAP-hosted Hub, administrators can host their own Hub and then configure their CDAP instances to use their own Hub instead of the public Hub.

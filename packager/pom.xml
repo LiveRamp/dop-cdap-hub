@@ -55,7 +55,7 @@
   </issueManagement>
 
   <properties>
-    <aws.version>1.11.22</aws.version>
+    <aws.version>1.12.150</aws.version>
     <bouncycastle.version>1.46</bouncycastle.version>
     <commons.cli.version>1.2</commons.cli.version>
     <gson.version>2.2.4</gson.version>
